@@ -22,6 +22,11 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (_, res) => {
+  res.json({ message: "Library Backend API is running" });
+});
+
+
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
 app.use("/api/auth", authRoutes);
