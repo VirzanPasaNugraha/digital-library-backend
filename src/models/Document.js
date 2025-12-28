@@ -4,10 +4,11 @@ const { Schema } = mongoose;
 
 // status dokumen (sesuai FE Anda)
 export const STATUS = {
-  PENDING: "Menunggu Verifikasi",
-  DITERIMA: "Diterima",
-  DITOLAK: "Ditolak",
+  PENDING: "PENDING",
+  DITERIMA: "DITERIMA",
+  DITOLAK: "DITOLAK",
 };
+
 
 const documentSchema = new Schema(
   {

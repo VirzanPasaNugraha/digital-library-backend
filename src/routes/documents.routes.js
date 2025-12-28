@@ -84,6 +84,55 @@ router.get("/_me/list", requireAuth, async (req, res) => {
   }
 });
 
+/* ===================== ADMIN UPDATE METADATA ===================== */
+router.patch(
+  "/:id",
+  requireAuth,
+  requireRole("admin-if", "admin-si"),
+  async (req, res) => {
+    try {
+      const {
+        judul,
+        penulis,
+        nim,
+        prodi,
+        tipe,
+        tahun,
+        pembimbing,
+        keywords,
+        abstrak,
+      } = req.body;
+
+      const doc = await Document.findById(req.params.id);
+      if (!doc) {
+        return res.status(404).json({ message: "Dokumen tidak ditemukan" });
+      }
+
+      // update field metadata
+      doc.judul = judul;
+      doc.penulis = penulis;
+      doc.nim = nim;
+      doc.prodi = prodi;
+      doc.tipe = tipe;
+      doc.tahun = Number(tahun);
+      doc.pembimbing = parseStringArray(pembimbing);
+doc.keywords = parseStringArray(keywords);
+
+      doc.abstrak = abstrak || "";
+
+      await doc.save();
+
+      res.json({
+        document: doc,
+        message: "Metadata dokumen berhasil diperbarui",
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Gagal memperbarui metadata dokumen" });
+    }
+  }
+);
+
+
 /* ===================== ADMIN LIST ===================== */
 router.get(
   "/_admin/list",
