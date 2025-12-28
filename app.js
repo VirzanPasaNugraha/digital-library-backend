@@ -12,11 +12,17 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://digital-library-frontend-zeta.vercel.app"
+      "https://digital-library-frontend-zeta.vercel.app",
+      /\.vercel\.app$/ // optional — izinkan semua preview domain Vercel juga
     ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
+app.options("*", cors());
+
 
 app.use(morgan("dev"));
 app.use(express.json({ limit: "2mb" }));
