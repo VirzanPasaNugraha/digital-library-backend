@@ -5,6 +5,7 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { sendMail } from "../utils/mailer.js";
+import { embedText } from "../utils/embedder.js";
 
 const router = Router();
 
@@ -83,6 +84,56 @@ router.get("/_me/list", requireAuth, async (req, res) => {
     res.status(500).json({ message: "Gagal memuat dokumen saya." });
   }
 });
+function cosineSimilarity(a, b) {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+router.get("/search", optionalAuth, async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim();
+    if (!q) return res.json({ documents: [] });
+
+    // 1️⃣ embedding query
+    const queryEmbedding = await embedText(q);
+
+    // 2️⃣ ambil dokumen diterima
+    const docs = await Document.find({
+      status: STATUS.DITERIMA,
+      embedding: { $exists: true, $ne: [] },
+    });
+
+    // 3️⃣ hitung similarity
+    const scored = docs.map((doc) => {
+      const minLen = Math.min(
+        doc.embedding.length,
+        queryEmbedding.length
+      );
+
+      const score = cosineSimilarity(
+        doc.embedding.slice(0, minLen),
+        queryEmbedding.slice(0, minLen)
+      );
+
+      return { ...doc.toObject(), score };
+    });
+
+    // 4️⃣ filter & sort
+    const results = scored
+      .filter(d => d.score > 0.15)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    res.json({ documents: results });
+  } catch (err) {
+    res.status(500).json({ message: "Gagal semantic search" });
+  }
+});
 
 /* ===================== ADMIN UPDATE METADATA ===================== */
 router.patch(
@@ -118,9 +169,21 @@ router.patch(
       doc.pembimbing = parseStringArray(pembimbing);
 doc.keywords = parseStringArray(keywords);
 
-      doc.abstrak = abstrak || "";
+     doc.abstrak = abstrak || "";
 
-      await doc.save();
+// ===== RE-EMBED JIKA SUDAH DITERIMA =====
+if (doc.status === STATUS.DITERIMA) {
+  const textForEmbedding = `
+${doc.judul}
+${doc.abstrak}
+${doc.keywords.join(" ")}
+`;
+  doc.embedding = await embedText(textForEmbedding);
+}
+// ======================================
+
+await doc.save();
+
 
       res.json({
         document: doc,
@@ -186,10 +249,23 @@ router.patch(
       }
 
       doc.status = status;
-      doc.alasanPenolakan =
-        status === STATUS.DITOLAK ? String(alasanPenolakan).trim() : "";
+doc.alasanPenolakan =
+  status === STATUS.DITOLAK ? String(alasanPenolakan).trim() : "";
 
-      await doc.save();
+// ================= EMBEDDING =================
+if (status === STATUS.DITERIMA && doc.embedding.length === 0) {
+  const textForEmbedding = `
+${doc.judul}
+${doc.abstrak}
+${doc.keywords.join(" ")}
+`;
+
+  doc.embedding = await embedText(textForEmbedding);
+}
+// =============================================
+
+await doc.save();
+
 
       return res.json({
         document: doc,

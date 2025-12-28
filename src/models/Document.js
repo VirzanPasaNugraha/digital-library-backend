@@ -24,6 +24,12 @@ const documentSchema = new Schema(
       required: true,
       trim: true,
     },
+    embedding: {
+  type: [Number],
+  default: [],
+  index: false,
+},
+
 
     penulis: {
       type: String,
