@@ -384,6 +384,72 @@ router.get("/:id", optionalAuth, async (req, res) => {
   }
 });
 
+
+/* ===================== UPLOAD (ADMIN) ===================== */
+router.post(
+  "/_admin/upload",
+  requireAuth,
+  requireRole("admin-if", "admin-si"),
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "File PDF wajib" });
+      }
+
+      const {
+        judul,
+        penulis,
+        nim,
+        prodi,
+        tipe,
+        tahun,
+        pembimbing,
+        abstrak,
+        keywords,
+      } = req.body;
+
+      if (!judul || !penulis || !nim || !prodi || !tipe || !tahun) {
+        return res.status(400).json({ message: "Field wajib belum lengkap" });
+      }
+
+      // upload ke Cloudinary
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: "documents",
+      });
+
+      const doc = await Document.create({
+        judul,
+        penulis,
+        nim,
+        prodi,
+        tipe,
+        tahun: Number(tahun),
+        pembimbing: parseStringArray(pembimbing),
+        keywords: parseStringArray(keywords),
+        abstrak: abstrak || "",
+        status: STATUS.PENDING, // ⬅️ INI KUNCI
+        owner: req.user._id,     // ⬅️ ADMIN JADI OWNER
+        fakultas: "FTI",
+        file: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+          originalName: req.file.originalname,
+          mime: req.file.mimetype,
+          size: req.file.size,
+        },
+      });
+
+      return res.json({
+        document: doc,
+        message: "Upload admin berhasil. Menunggu review.",
+      });
+    } catch (err) {
+      return res.status(500).json({ message: "Gagal upload dokumen admin." });
+    }
+  }
+);
+
 /* ===================== DELETE (ADMIN) ===================== */
 router.delete(
   "/:id",
