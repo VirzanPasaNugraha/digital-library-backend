@@ -9,15 +9,15 @@ cloudinary.config({
 
 /**
  * Upload PDF → IMAGE (halaman pertama) + WATERMARK
- * - Orientasi DINORMALISASI (tidak terbalik)
- * - Aman di semua device (mobile / desktop)
- * - Siap production
+ * - Tidak kebalik
+ * - Watermark PASTI muncul
+ * - Stabil di semua device
  */
 export function uploadToCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "image", // PDF → image (page 1)
+        resource_type: "image",
         folder: options.folder || "documents",
 
         use_filename: true,
@@ -25,20 +25,21 @@ export function uploadToCloudinary(buffer, options = {}) {
         overwrite: false,
 
         transformation: [
-          // 1️⃣ HAPUS metadata & orientasi PDF
+          // 1️⃣ Normalisasi orientasi
           { flags: "force_strip" },
-
-          // 2️⃣ PAKSA orientasi normal
           { angle: 0 },
 
-          // 3️⃣ BARU pasang watermark
+          // 2️⃣ Pasang watermark (LAYER)
           {
-            overlay: { public_id: "watermark_dwxc4s" },
-            gravity: "center",
-            opacity: 25,
+            overlay: "watermark_dwxc4s",
             width: 0.6,
             crop: "scale",
+            gravity: "center",
+            effect: "opacity:25",
           },
+
+          // 3️⃣ APPLY overlay (WAJIB)
+          { flags: "layer_apply" },
         ],
       },
       (error, result) => {

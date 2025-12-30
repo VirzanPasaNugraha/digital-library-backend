@@ -67,11 +67,12 @@ export async function sendRejectedMail(doc) {
     <p><b>Alasan Penolakan:</b></p>
     <p style="color:red;">${doc.alasanPenolakan}</p>
 
-    <p>
-      📄 <a href="${doc.pdfUrl}" target="_blank">
-        Lihat dokumen PDF
-      </a>
-    </p>
+   <p>
+  📄 <a href="${doc.file?.url}" target="_blank">
+    Lihat dokumen PDF
+  </a>
+</p>
+
 
     <hr/>
     <p>Digital Library FTI</p>
