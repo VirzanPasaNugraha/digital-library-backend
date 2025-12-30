@@ -7,11 +7,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+/**
+ * Upload PDF sebagai IMAGE + WATERMARK
+ * (hasil = IMAGE halaman pertama PDF)
+ */
 export function uploadToCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
+    const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "image",
+        resource_type: "image", // PDF → image (HALAMAN 1)
         folder: options.folder || "documents",
 
         use_filename: true,
@@ -19,24 +23,12 @@ export function uploadToCloudinary(buffer, options = {}) {
         overwrite: false,
 
         transformation: [
-          // STEP 1: normalize PDF orientation
-          {
-            angle: 0,
-            width: 1200,
-            height: 1600,
-            crop: "fit",
-            background: "white",
-          },
-
-          // STEP 2: watermark (RELATIVE + layer_apply)
           {
             overlay: { public_id: "watermark_dwxc4s" },
             gravity: "center",
             opacity: 25,
             width: 0.6,
             crop: "scale",
-            relative: true,
-            flags: "layer_apply",
           },
         ],
       },
@@ -49,7 +41,7 @@ export function uploadToCloudinary(buffer, options = {}) {
       }
     );
 
-    streamifier.createReadStream(buffer).pipe(uploadStream);
+    streamifier.createReadStream(buffer).pipe(stream);
   });
 }
 
