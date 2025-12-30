@@ -1,6 +1,9 @@
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 
+/**
+ * Cloudinary configuration
+ */
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -8,38 +11,52 @@ cloudinary.config({
 });
 
 /**
- * Upload PDF → IMAGE (halaman pertama) + WATERMARK
- * - Tidak kebalik
- * - Watermark PASTI muncul
- * - Stabil di semua device
+ * Upload PDF → IMAGE (halaman 1) + WATERMARK
+ * - Normalize orientation (anti kebalik)
+ * - Konsisten di semua device
  */
 export function uploadToCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
+    const uploadStream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "image",
+        resource_type: "image", // PDF → IMAGE (page 1)
         folder: options.folder || "documents",
 
         use_filename: true,
         unique_filename: true,
         overwrite: false,
 
+        /**
+         * TRANSFORMATION PIPELINE
+         */
         transformation: [
-          // 1️⃣ Normalisasi orientasi
-          { flags: "force_strip" },
-          { angle: 0 },
-
-          // 2️⃣ Pasang watermark (LAYER)
+          /**
+           * STEP 1:
+           * Normalize orientation PDF
+           * - Mengabaikan rotation metadata PDF
+           * - Menyamakan orientasi di semua device
+           */
           {
-            overlay: "watermark_dwxc4s",
-            width: 0.6,
-            crop: "scale",
-            gravity: "center",
-            effect: "opacity:25",
+            angle: 0,
+            width: 1200,
+            height: 1600,
+            crop: "fit",
+            background: "white",
           },
 
-          // 3️⃣ APPLY overlay (WAJIB)
-          { flags: "layer_apply" },
+          /**
+           * STEP 2:
+           * Apply watermark
+           */
+          {
+            overlay: {
+              public_id: "watermark_dwxc4s", // pastikan IMAGE watermark
+            },
+            gravity: "center",
+            opacity: 25,
+            width: 0.6,
+            crop: "scale",
+          },
         ],
       },
       (error, result) => {
@@ -47,16 +64,17 @@ export function uploadToCloudinary(buffer, options = {}) {
           console.error("Cloudinary upload error:", error);
           return reject(error);
         }
+
         resolve(result);
       }
     );
 
-    streamifier.createReadStream(buffer).pipe(stream);
+    streamifier.createReadStream(buffer).pipe(uploadStream);
   });
 }
 
 /**
- * Hapus file dari Cloudinary
+ * Delete image from Cloudinary
  */
 export async function deleteFromCloudinary(publicId) {
   if (!publicId) return;
