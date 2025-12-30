@@ -8,14 +8,16 @@ cloudinary.config({
 });
 
 /**
- * Upload PDF sebagai IMAGE + WATERMARK
- * (hasil = IMAGE halaman pertama PDF)
+ * Upload PDF → IMAGE (halaman pertama) + WATERMARK
+ * - Orientasi DINORMALISASI (tidak terbalik)
+ * - Aman di semua device (mobile / desktop)
+ * - Siap production
  */
 export function uploadToCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "image", // PDF → image (HALAMAN 1)
+        resource_type: "image", // PDF → image (page 1)
         folder: options.folder || "documents",
 
         use_filename: true,
@@ -23,6 +25,13 @@ export function uploadToCloudinary(buffer, options = {}) {
         overwrite: false,
 
         transformation: [
+          // 1️⃣ HAPUS metadata & orientasi PDF
+          { flags: "force_strip" },
+
+          // 2️⃣ PAKSA orientasi normal
+          { angle: 0 },
+
+          // 3️⃣ BARU pasang watermark
           {
             overlay: { public_id: "watermark_dwxc4s" },
             gravity: "center",
@@ -45,6 +54,9 @@ export function uploadToCloudinary(buffer, options = {}) {
   });
 }
 
+/**
+ * Hapus file dari Cloudinary
+ */
 export async function deleteFromCloudinary(publicId) {
   if (!publicId) return;
 

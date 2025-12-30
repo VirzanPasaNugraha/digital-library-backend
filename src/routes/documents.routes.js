@@ -4,7 +4,10 @@ import Document, { STATUS } from "../models/Document.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
-import { sendMail } from "../utils/mailer.js";
+import {
+  sendAcceptedMail,
+  sendRejectedMail,
+} from "../utils/documentMailer.js";
 import { embedText } from "../utils/embedder.js";
 
 const router = Router();
@@ -267,31 +270,16 @@ ${(doc.keywords || []).join(" ")}
       await doc.save();
 
       // ==================== SEND EMAIL (BENAR) ====================
-      if (doc.owner?.email) {
-        if (status === STATUS.DITERIMA) {
-          await sendMail({
-            to: doc.owner.email,
-            subject: "Dokumen Anda Telah Diterima",
-            html: `
-              <p>Halo ${doc.owner.name || "Mahasiswa"},</p>
-              <p>Dokumen <b>${doc.judul}</b> telah <b>DITERIMA</b>.</p>
-              <p>Terima kasih.</p>
-            `,
-          });
-        }
+    // ==================== SEND EMAIL (FINAL) ====================
+if (status === STATUS.DITERIMA) {
+  await sendAcceptedMail(doc);
+}
 
-        if (status === STATUS.DITOLAK) {
-          await sendMail({
-            to: doc.owner.email,
-            subject: "Dokumen Anda Ditolak",
-            html: `
-              <p>Halo ${doc.owner.name || "Mahasiswa"},</p>
-              <p>Dokumen <b>${doc.judul}</b> <b>DITOLAK</b>.</p>
-              <p>Alasan: ${doc.alasanPenolakan}</p>
-            `,
-          });
-        }
-      }
+if (status === STATUS.DITOLAK) {
+  await sendRejectedMail(doc);
+}
+// ============================================================
+
       // ============================================================
 
       return res.json({
