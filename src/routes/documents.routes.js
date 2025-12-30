@@ -184,6 +184,7 @@ ${doc.keywords.join(" ")}
 
 await doc.save();
 
+// =============================================
 
       res.json({
         document: doc,
@@ -248,24 +249,50 @@ router.patch(
         return res.status(404).json({ message: "Dokumen tidak ditemukan" });
       }
 
+      // Update status
       doc.status = status;
-doc.alasanPenolakan =
-  status === STATUS.DITOLAK ? String(alasanPenolakan).trim() : "";
+      doc.alasanPenolakan =
+        status === STATUS.DITOLAK ? String(alasanPenolakan).trim() : "";
 
-// ================= EMBEDDING =================
-if (status === STATUS.DITERIMA && doc.embedding.length === 0) {
-  const textForEmbedding = `
+      // (opsional) embedding saat diterima
+      if (status === STATUS.DITERIMA) {
+        const textForEmbedding = `
 ${doc.judul}
-${doc.abstrak}
-${doc.keywords.join(" ")}
-`;
+${doc.abstrak || ""}
+${(doc.keywords || []).join(" ")}
+        `;
+        doc.embedding = await embedText(textForEmbedding);
+      }
 
-  doc.embedding = await embedText(textForEmbedding);
-}
-// =============================================
+      await doc.save();
 
-await doc.save();
+      // ==================== SEND EMAIL (BENAR) ====================
+      if (doc.owner?.email) {
+        if (status === STATUS.DITERIMA) {
+          await sendMail({
+            to: doc.owner.email,
+            subject: "Dokumen Anda Telah Diterima",
+            html: `
+              <p>Halo ${doc.owner.name || "Mahasiswa"},</p>
+              <p>Dokumen <b>${doc.judul}</b> telah <b>DITERIMA</b>.</p>
+              <p>Terima kasih.</p>
+            `,
+          });
+        }
 
+        if (status === STATUS.DITOLAK) {
+          await sendMail({
+            to: doc.owner.email,
+            subject: "Dokumen Anda Ditolak",
+            html: `
+              <p>Halo ${doc.owner.name || "Mahasiswa"},</p>
+              <p>Dokumen <b>${doc.judul}</b> <b>DITOLAK</b>.</p>
+              <p>Alasan: ${doc.alasanPenolakan}</p>
+            `,
+          });
+        }
+      }
+      // ============================================================
 
       return res.json({
         document: doc,
@@ -276,6 +303,7 @@ await doc.save();
     }
   }
 );
+
 
 /* ===================== LIST ===================== */
 router.get("/", optionalAuth, async (req, res) => {
