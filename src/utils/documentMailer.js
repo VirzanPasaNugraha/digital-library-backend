@@ -22,19 +22,14 @@ export async function sendAcceptedMail(doc) {
       <tr><td><b>Prodi</b></td><td>${doc.prodi}</td></tr>
       <tr><td><b>Fakultas</b></td><td>${doc.fakultas}</td></tr>
       <tr><td><b>Tahun</b></td><td>${doc.tahun}</td></tr>
-      <tr><td><b>Keywords</b></td>
+      <tr>
+        <td><b>Keywords</b></td>
         <td>${(doc.keywords || []).join(", ") || "-"}</td>
       </tr>
     </table>
 
     <p><b>Abstrak:</b></p>
     <p>${doc.abstrak || "-"}</p>
-
-    <p>
-      📄 <a href="${doc.pdfUrl}" target="_blank">
-        Lihat dokumen PDF
-      </a>
-    </p>
 
     <hr/>
     <p>Digital Library FTI</p>
@@ -66,13 +61,6 @@ export async function sendRejectedMail(doc) {
 
     <p><b>Alasan Penolakan:</b></p>
     <p style="color:red;">${doc.alasanPenolakan}</p>
-
-   <p>
-  📄 <a href="${doc.file?.url}" target="_blank">
-    Lihat dokumen PDF
-  </a>
-</p>
-
 
     <hr/>
     <p>Digital Library FTI</p>
