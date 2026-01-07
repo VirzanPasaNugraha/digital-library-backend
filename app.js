@@ -13,6 +13,7 @@ app.use(
   cors({
     origin: [
       "https://digital-library-frontend-zeta.vercel.app",
+       "https://diglib-fti.unsap.ac.id",
       /\.vercel\.app$/ // optional — izinkan semua preview domain Vercel juga
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
